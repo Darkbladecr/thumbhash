@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<body>
+  <h1>Browser Example</h1>
+
+  <!-- The server typically sets the width and height ahead of time to avoid layout shifts -->
+  <p id="hash">Thumbhash:</p>
+  <p id="hash2">Thumbhash2:</p>
+  <img id="demo" width="424" height="512" />
+  <img id="demo2" width="424" height="512" />
+</body>
+
+<script type="module">
+  import * as ThumbHash from "./js/thumbhash.js";
+
+  const images = ["./examples/xray.jpg", "./examples/skull.jpg"];
+  for (const originalURL of images) {
+    const image = new Image();
+    image.src = originalURL;
+    await new Promise((resolve) => (image.onload = resolve));
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const scale = 100 / Math.max(image.width, image.height);
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    const binaryThumbHash = ThumbHash.rgbaToThumbHash(
+      pixels.width,
+      pixels.height,
+      pixels.data
+    );
+
+    const binaryToBase64 = (binary) => btoa(String.fromCharCode(...binary));
+    const thumbHashToBase64 = binaryToBase64(binaryThumbHash);
+    const text =
+      originalURL === images[0]
+        ? document.getElementById("hash")
+        : document.getElementById("hash2");
+    text.innerText += " " + thumbHashToBase64;
+
+    // ThumbHash to data URL
+    const placeholderURL = ThumbHash.thumbHashToDataURL(binaryThumbHash);
+
+    // Simulate setting the placeholder first, then the full image loading later on
+    const demo =
+      originalURL === images[0]
+        ? document.getElementById("demo")
+        : document.getElementById("demo2");
+    demo.style.background = `center / cover url(${placeholderURL})`;
+    function revealImage() {
+      demo.src = originalURL;
+    }
+    function blurImage() {
+      demo.src = placeholderURL;
+    }
+
+    demo.addEventListener("mouseover", revealImage);
+    demo.addEventListener("mouseout", blurImage);
+  }
+</script>
